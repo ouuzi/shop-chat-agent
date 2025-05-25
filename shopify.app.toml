@@ -3,7 +3,7 @@
 client_id = "66b10008056e61d7ee56ac49ad845136"
 name = "Aichat"
 handle = "aichat-13"
-application_url = "https://localhost:3458"
+application_url = "https://shop-chat-agent-omw6ii7op-dimitris-projects-4de8052b.vercel.app"
 embedded = true
 
 [build]
@@ -18,9 +18,9 @@ scopes = "customer_read_customers,customer_read_orders,customer_read_store_credi
 
 [auth]
 redirect_urls = [
-  "https://localhost:3458/auth/callback",
-  "https://localhost:3458/auth/shopify/callback",
-  "https://localhost:3458/api/auth/callback"
+  "https://shop-chat-agent-omw6ii7op-dimitris-projects-4de8052b.vercel.app/auth/callback",
+  "https://shop-chat-agent-omw6ii7op-dimitris-projects-4de8052b.vercel.app/auth/shopify/callback",
+  "https://shop-chat-agent-omw6ii7op-dimitris-projects-4de8052b.vercel.app/api/auth/callback"
 ]
 
 [pos]

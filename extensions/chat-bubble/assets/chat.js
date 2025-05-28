@@ -246,7 +246,7 @@
         ShopAIChat.UI.showTypingIndicator();
 
         try {
-          const apiBaseUrl = window.shopChatConfig?.apiUrl || 'https://shop-chat-agent.vercel.app';
+          const apiBaseUrl = window.shopChatConfig?.apiUrl || 'https://shop-chat-agent-puti.vercel.app';
           const streamUrl = `${apiBaseUrl}/chat`;
           const requestBody = JSON.stringify({
             message: userMessage,
@@ -461,7 +461,7 @@
             prompt_type: promptType
           });
 
-          const apiBaseUrl = window.shopChatConfig?.apiUrl || 'https://shop-chat-agent.vercel.app';
+          const apiBaseUrl = window.shopChatConfig?.apiUrl || 'https://shop-chat-agent-puti.vercel.app';
           const streamUrl = `${apiBaseUrl}/chat`;
           const shopId = window.shopId;
 
@@ -600,7 +600,7 @@
           messagesContainer.appendChild(loadingMessage);
 
           // Fetch history from the server
-          const apiBaseUrl = window.shopChatConfig?.apiUrl || 'https://shop-chat-agent.vercel.app';
+          const apiBaseUrl = window.shopChatConfig?.apiUrl || 'https://shop-chat-agent-puti.vercel.app';
           const historyUrl = `${apiBaseUrl}/chat?history=true&conversation_id=${encodeURIComponent(conversationId)}`;
           console.log('Fetching history from:', historyUrl);
 
@@ -755,7 +755,7 @@
           attemptCount++;
 
           try {
-            const apiBaseUrl = window.shopChatConfig?.apiUrl || 'https://shop-chat-agent.vercel.app';
+            const apiBaseUrl = window.shopChatConfig?.apiUrl || 'https://shop-chat-agent-puti.vercel.app';
             const tokenUrl = `${apiBaseUrl}/auth/token-status?conversation_id=${encodeURIComponent(conversationId)}`;
             const response = await fetch(tokenUrl);
 

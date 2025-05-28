@@ -18,10 +18,14 @@ class MCPClient {
     this.tools = [];
     this.customerTools = [];
     this.storefrontTools = [];
+    
+    // Handle case where hostUrl might be null/undefined
+    const safeHostUrl = hostUrl || 'https://shop.myshopify.com';
+    
     // TODO: Make this dynamic, for that first we need to allow access of mcp tools on password proteted demo stores.
-    this.storefrontMcpEndpoint = `${hostUrl}/api/mcp`;
+    this.storefrontMcpEndpoint = `${safeHostUrl}/api/mcp`;
 
-    const accountHostUrl = hostUrl.replace(/(\.myshopify\.com)$/, '.account$1');
+    const accountHostUrl = safeHostUrl.replace(/(\.myshopify\.com)$/, '.account$1');
     this.customerMcpEndpoint = customerMcpEndpoint || `${accountHostUrl}/customer/api/mcp`;
     this.customerAccessToken = "";
     this.conversationId = conversationId;

@@ -1,5 +1,4 @@
 {
-  "buildCommand": "npx prisma generate && npm run build",
   "functions": {
     "app/entry.server.jsx": {
       "includeFiles": "node_modules/.prisma/**"

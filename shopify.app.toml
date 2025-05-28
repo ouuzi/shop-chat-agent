@@ -3,7 +3,7 @@
 client_id = "66b10008056e61d7ee56ac49ad845136"
 name = "Aichat"
 handle = "aichat-13"
-application_url = "https://shop-chat-agent.vercel.app"
+application_url = "https://shop-chat-agent-puti.vercel.app"
 embedded = true
 
 [build]

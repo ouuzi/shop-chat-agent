@@ -186,6 +186,11 @@ async function handleChatSession({
       };
     });
 
+    // Ensure we always have at least the current user message
+    if (conversationHistory.length === 0) {
+      conversationHistory = [{ role: 'user', content: userMessage }];
+    }
+
     // Execute the conversation stream
     let finalMessage = { role: 'user', content: userMessage };
 

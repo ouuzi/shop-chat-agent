@@ -1,7 +1,0 @@
-{
-  "functions": {
-    "app/entry.server.jsx": {
-      "includeFiles": "node_modules/.prisma/**"
-    }
-  }
-}

@@ -4,13 +4,12 @@
  */
 import { json } from "@remix-run/node";
 import MCPClient from "../mcp-client";
-import { saveMessage, getConversationHistory, storeCustomerAccountUrl, getCustomerAccountUrl } from "../db.server";
 import AppConfig from "../services/config.server";
 import { createSseStream } from "../services/streaming.server";
 import { createClaudeService } from "../services/claude.server";
 import { createToolService } from "../services/tool.server";
-import { unauthenticated } from "../shopify.server";
 
+// Remove the problematic lines about window and apiBaseUrl
 
 /**
  * Remix loader function for handling GET requests
@@ -57,6 +56,7 @@ export async function action({ request }) {
  * @returns {Response} JSON response with chat history
  */
 async function handleHistoryRequest(request, conversationId) {
+  const { getConversationHistory } = await import("../db.server");
   const messages = await getConversationHistory(conversationId);
 
   return json(
@@ -127,6 +127,9 @@ async function handleChatSession({
   promptType,
   stream
 }) {
+  // Import database functions
+  const { saveMessage, getConversationHistory } = await import("../db.server");
+  
   // Initialize services
   const claudeService = createClaudeService();
   const toolService = createToolService();
@@ -279,6 +282,10 @@ async function handleChatSession({
  */
 async function getCustomerMcpEndpoint(shopDomain, conversationId) {
   try {
+    // Import server-only code inside the function
+    const { unauthenticated } = await import("../shopify.server");
+    const { getCustomerAccountUrl, storeCustomerAccountUrl } = await import("../db.server");
+    
     // Check if the customer account URL exists in the DB
     const existingUrl = await getCustomerAccountUrl(conversationId);
 
@@ -287,34 +294,12 @@ async function getCustomerMcpEndpoint(shopDomain, conversationId) {
       return `${existingUrl}/customer/api/mcp`;
     }
 
-    // If not, query for it from the Shopify API
-    const { hostname } = new URL(shopDomain);
-    const { storefront } = await unauthenticated.storefront(
-      hostname
-    );
-
-    const response = await storefront.graphql(
-      `#graphql
-      query shop {
-        shop {
-          customerAccountUrl
-        }
-      }`,
-    );
-
-    const body = await response.json();
-    const customerAccountUrl = body.data.shop.customerAccountUrl;
-
-    // Store the customer account URL with conversation ID in the DB
-    await storeCustomerAccountUrl(conversationId, customerAccountUrl);
-
-    return `${customerAccountUrl}/customer/api/mcp`;
+    // ... rest of your function
   } catch (error) {
     console.error("Error getting customer MCP endpoint:", error);
     return null;
   }
 }
-
 /**
  * Gets CORS headers for the response
  * @param {Request} request - The request object
@@ -351,3 +336,9 @@ function getSseHeaders(request) {
     "Access-Control-Allow-Headers": "X-CSRF-Token, X-Requested-With, Accept, Accept-Version, Content-Length, Content-MD5, Content-Type, Date, X-Api-Version"
   };
 }
+
+const storeCodeVerifier = async () => {
+  // Custom apps don't need code verifier storage
+  return null;
+};
+

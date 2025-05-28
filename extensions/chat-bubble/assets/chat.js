@@ -246,11 +246,64 @@
         ShopAIChat.UI.showTypingIndicator();
 
         try {
-          ShopAIChat.API.streamResponse(userMessage, conversationId, messagesContainer);
+          const apiBaseUrl = window.shopChatConfig?.apiUrl || 'https://shop-chat-agent.vercel.app';
+          const streamUrl = `${apiBaseUrl}/chat`;
+          const requestBody = JSON.stringify({
+            message: userMessage,
+            conversation_id: conversationId,
+            prompt_type: 'standardAssistant'
+          });
+
+          const shopId = window.shopId;
+
+          const response = await fetch(streamUrl, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Accept': 'text/event-stream',
+              'X-Shopify-Shop-Id': shopId
+            },
+            body: requestBody
+          });
+
+          const reader = response.body.getReader();
+          const decoder = new TextDecoder();
+          let buffer = '';
+
+          // Create initial message element
+          let messageElement = document.createElement('div');
+          messageElement.classList.add('shop-ai-message', 'assistant');
+          messageElement.textContent = '';
+          messageElement.dataset.rawText = '';
+          messagesContainer.appendChild(messageElement);
+          let currentMessageElement = messageElement;
+
+          // Process the stream
+          while (true) {
+            const { value, done } = await reader.read();
+            if (done) break;
+
+            buffer += decoder.decode(value, { stream: true });
+            const lines = buffer.split('\n\n');
+            buffer = lines.pop() || '';
+
+            for (const line of lines) {
+              if (line.startsWith('data: ')) {
+                try {
+                  const data = JSON.parse(line.slice(6));
+                  ShopAIChat.API.handleStreamEvent(data, currentMessageElement, messagesContainer, userMessage,
+                    (newElement) => { currentMessageElement = newElement; });
+                } catch (e) {
+                  console.error('Error parsing event data:', e, line);
+                }
+              }
+            }
+          }
         } catch (error) {
-          console.error('Error communicating with Claude API:', error);
+          console.error('Error in streaming:', error);
           ShopAIChat.UI.removeTypingIndicator();
-          this.add("Sorry, I couldn't process your request at the moment. Please try again later.", 'assistant', messagesContainer);
+          this.add("Sorry, I couldn't process your request. Please try again later.",
+            'assistant', messagesContainer);
         }
       },
 
@@ -408,7 +461,8 @@
             prompt_type: promptType
           });
 
-          const streamUrl = 'https://localhost:3458/chat';
+          const apiBaseUrl = window.shopChatConfig?.apiUrl || 'https://shop-chat-agent.vercel.app';
+          const streamUrl = `${apiBaseUrl}/chat`;
           const shopId = window.shopId;
 
           const response = await fetch(streamUrl, {
@@ -446,7 +500,7 @@
               if (line.startsWith('data: ')) {
                 try {
                   const data = JSON.parse(line.slice(6));
-                  this.handleStreamEvent(data, currentMessageElement, messagesContainer, userMessage,
+                  ShopAIChat.API.handleStreamEvent(data, currentMessageElement, messagesContainer, userMessage,
                     (newElement) => { currentMessageElement = newElement; });
                 } catch (e) {
                   console.error('Error parsing event data:', e, line);
@@ -546,7 +600,8 @@
           messagesContainer.appendChild(loadingMessage);
 
           // Fetch history from the server
-          const historyUrl = `https://localhost:3458/chat?history=true&conversation_id=${encodeURIComponent(conversationId)}`;
+          const apiBaseUrl = window.shopChatConfig?.apiUrl || 'https://shop-chat-agent.vercel.app';
+          const historyUrl = `${apiBaseUrl}/chat?history=true&conversation_id=${encodeURIComponent(conversationId)}`;
           console.log('Fetching history from:', historyUrl);
 
           const response = await fetch(historyUrl, {
@@ -700,8 +755,8 @@
           attemptCount++;
 
           try {
-            const tokenUrl = 'https://localhost:3458/auth/token-status?conversation_id=' +
-              encodeURIComponent(conversationId);
+            const apiBaseUrl = window.shopChatConfig?.apiUrl || 'https://shop-chat-agent.vercel.app';
+            const tokenUrl = `${apiBaseUrl}/auth/token-status?conversation_id=${encodeURIComponent(conversationId)}`;
             const response = await fetch(tokenUrl);
 
             if (!response.ok) {

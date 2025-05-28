@@ -2,14 +2,17 @@
  * Authentication service for handling OAuth and PKCE flows
  */
 
+import { 
+  storeCodeVerifier as dbStoreCodeVerifier, 
+  getCustomerAccountUrl as dbGetCustomerAccountUrl 
+} from "./db.server";
+
 /**
  * Generate authorization URL for the customer
  * @param {string} conversationId - The conversation ID to track the auth flow
  * @returns {Promise<Object>} - Object containing the auth URL and conversation ID
  */
 export async function generateAuthUrl(conversationId, shopId) {
-  const { storeCodeVerifier } = await import('./db.server');
-
   // Generate authorization URL for the customer
   const clientId = process.env.SHOPIFY_API_KEY;
   const scope = "customer-account-mcp-api:full";
@@ -27,7 +30,8 @@ export async function generateAuthUrl(conversationId, shopId) {
 
   // Store the code verifier in the database
   try {
-    await storeCodeVerifier(state, verifier);
+    const expiresAt = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes from now
+    await dbStoreCodeVerifier(state, verifier, expiresAt);
   } catch (error) {
     console.error('Failed to store code verifier:', error);
   }
@@ -57,8 +61,7 @@ export async function generateAuthUrl(conversationId, shopId) {
  * @returns {Promise<string|null>} - The base auth URL or null if not found
  */
 async function getBaseAuthUrl(conversationId, shopId) {
-  const { getCustomerAccountUrl } = await import('./db.server');
-  const customerAccountUrl = await getCustomerAccountUrl(conversationId);
+  const customerAccountUrl = await dbGetCustomerAccountUrl(conversationId);
 
   if (!customerAccountUrl) {
     console.error('Customer account URL not found for conversation:', conversationId);
@@ -129,3 +132,7 @@ function base64UrlEncode(str) {
 
   return base64;
 }
+
+// Export database functions for use in other modules
+export const storeCodeVerifier = dbStoreCodeVerifier;
+export const getCustomerAccountUrl = dbGetCustomerAccountUrl;

@@ -1,15 +1,8 @@
 {
+  "buildCommand": "npx prisma generate && npm run build",
   "functions": {
-    "app/**/*.js": {
-      "runtime": "nodejs18.x"
+    "app/entry.server.jsx": {
+      "includeFiles": "node_modules/.prisma/**"
     }
-  },
-  "buildCommand": "prisma generate && npm run build",
-  "installCommand": "npm install && prisma generate",
-  "rewrites": [
-    {
-      "source": "/(.*)",
-      "destination": "/app/$1"
-    }
-  ]
+  }
 }

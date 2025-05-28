@@ -1,255 +1,143 @@
 import { PrismaClient } from "@prisma/client";
 
-if (process.env.NODE_ENV !== "production") {
-  if (!global.prismaGlobal) {
-    global.prismaGlobal = new PrismaClient();
+let db;
+
+if (process.env.NODE_ENV === "production") {
+  db = new PrismaClient();
+} else {
+  if (!globalThis.__db__) {
+    globalThis.__db__ = new PrismaClient();
   }
+  db = globalThis.__db__;
 }
 
-const prisma = global.prismaGlobal ?? new PrismaClient();
+export { db };
 
-export default prisma;
-
-/**
- * Store a code verifier for PKCE authentication
- * @param {string} state - The state parameter used in OAuth flow
- * @param {string} verifier - The code verifier to store
- * @returns {Promise<Object>} - The saved code verifier object
- */
-export async function storeCodeVerifier(state, verifier) {
-  // Calculate expiration date (10 minutes from now)
-  const expiresAt = new Date();
-  expiresAt.setMinutes(expiresAt.getMinutes() + 10);
-
-  try {
-    return await prisma.codeVerifier.create({
-      data: {
-        id: `cv_${Date.now()}`,
-        state,
-        verifier,
-        expiresAt
-      }
-    });
-  } catch (error) {
-    console.error('Error storing code verifier:', error);
-    throw error;
-  }
-}
-
-/**
- * Get a code verifier by state parameter
- * @param {string} state - The state parameter used in OAuth flow
- * @returns {Promise<Object|null>} - The code verifier object or null if not found
- */
-export async function getCodeVerifier(state) {
-  try {
-    const verifier = await prisma.codeVerifier.findFirst({
-      where: {
-        state,
-        expiresAt: {
-          gt: new Date()
-        }
-      }
-    });
-
-    if (verifier) {
-      // Delete it after retrieval to prevent reuse
-      await prisma.codeVerifier.delete({
-        where: {
-          id: verifier.id
-        }
-      });
-    }
-
-    return verifier;
-  } catch (error) {
-    console.error('Error retrieving code verifier:', error);
-    return null;
-  }
-}
-
-/**
- * Store a customer access token in the database
- * @param {string} conversationId - The conversation ID to associate with the token
- * @param {string} accessToken - The access token to store
- * @param {Date} expiresAt - When the token expires
- * @returns {Promise<Object>} - The saved customer token
- */
-export async function storeCustomerToken(conversationId, accessToken, expiresAt) {
-  try {
-    // Check if a token already exists for this conversation
-    const existingToken = await prisma.customerToken.findFirst({
-      where: { conversationId }
-    });
-
-    if (existingToken) {
-      // Update existing token
-      return await prisma.customerToken.update({
-        where: { id: existingToken.id },
-        data: {
-          accessToken,
-          expiresAt,
-          updatedAt: new Date()
-        }
-      });
-    }
-
-    // Create a new token record
-    return await prisma.customerToken.create({
-      data: {
-        id: `ct_${Date.now()}`,
-        conversationId,
-        accessToken,
-        expiresAt,
-        createdAt: new Date(),
-        updatedAt: new Date()
-      }
-    });
-  } catch (error) {
-    console.error('Error storing customer token:', error);
-    throw error;
-  }
-}
-
-/**
- * Get a customer access token by conversation ID
- * @param {string} conversationId - The conversation ID
- * @returns {Promise<Object|null>} - The customer token or null if not found/expired
- */
+// Customer Token functions
 export async function getCustomerToken(conversationId) {
   try {
-    const token = await prisma.customerToken.findFirst({
-      where: {
-        conversationId,
-        expiresAt: {
-          gt: new Date() // Only return non-expired tokens
-        }
-      }
+    const customerToken = await db.customerToken.findFirst({
+      where: { conversationId },
+      orderBy: { createdAt: 'desc' }
     });
-
-    return token;
+    return customerToken;
   } catch (error) {
-    console.error('Error retrieving customer token:', error);
+    console.error('Error getting customer token:', error);
     return null;
   }
 }
 
-/**
- * Create or update a conversation in the database
- * @param {string} conversationId - The conversation ID
- * @returns {Promise<Object>} - The created or updated conversation
- */
-export async function createOrUpdateConversation(conversationId) {
+export async function storeCustomerToken(conversationId, accessToken, refreshToken, expiresAt) {
   try {
-    const existingConversation = await prisma.conversation.findUnique({
-      where: { id: conversationId }
-    });
-
-    if (existingConversation) {
-      return await prisma.conversation.update({
-        where: { id: conversationId },
-        data: {
-          updatedAt: new Date()
-        }
-      });
-    }
-
-    return await prisma.conversation.create({
+    const tokenId = `token_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+    const customerToken = await db.customerToken.create({
       data: {
-        id: conversationId
+        id: tokenId,
+        conversationId,
+        accessToken,
+        refreshToken,
+        expiresAt: new Date(expiresAt)
       }
     });
+    return customerToken;
   } catch (error) {
-    console.error('Error creating/updating conversation:', error);
-    throw error;
+    console.error('Error storing customer token:', error);
+    return null;
   }
 }
 
-/**
- * Save a message to the database
- * @param {string} conversationId - The conversation ID
- * @param {string} role - The message role (user or assistant)
- * @param {string} content - The message content
- * @returns {Promise<Object>} - The saved message
- */
+// Code Verifier functions
+export async function storeCodeVerifier(state, verifier, expiresAt) {
+  try {
+    const codeVerifier = await db.codeVerifier.create({
+      data: {
+        id: `verifier_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+        state,
+        verifier,
+        expiresAt: new Date(expiresAt)
+      }
+    });
+    return codeVerifier;
+  } catch (error) {
+    console.error('Error storing code verifier:', error);
+    return null;
+  }
+}
+
+export async function getCodeVerifier(state) {
+  try {
+    const codeVerifier = await db.codeVerifier.findUnique({
+      where: { state }
+    });
+    return codeVerifier;
+  } catch (error) {
+    console.error('Error getting code verifier:', error);
+    return null;
+  }
+}
+
+// Conversation and Message functions
 export async function saveMessage(conversationId, role, content) {
   try {
-    // Ensure the conversation exists
-    await createOrUpdateConversation(conversationId);
+    // Ensure conversation exists
+    await db.conversation.upsert({
+      where: { id: conversationId },
+      update: { updatedAt: new Date() },
+      create: { id: conversationId }
+    });
 
-    // Create the message
-    return await prisma.message.create({
+    // Save the message
+    const message = await db.message.create({
       data: {
         conversationId,
         role,
         content
       }
     });
+    return message;
   } catch (error) {
     console.error('Error saving message:', error);
-    throw error;
+    return null;
   }
 }
 
-/**
- * Get conversation history
- * @param {string} conversationId - The conversation ID
- * @returns {Promise<Array>} - Array of messages in the conversation
- */
-export async function getConversationHistory(conversationId) {
+export async function getConversationHistory(conversationId, limit = 50) {
   try {
-    const messages = await prisma.message.findMany({
+    const messages = await db.message.findMany({
       where: { conversationId },
-      orderBy: { createdAt: 'asc' }
+      orderBy: { createdAt: 'asc' },
+      take: limit
     });
-
     return messages;
   } catch (error) {
-    console.error('Error retrieving conversation history:', error);
+    console.error('Error getting conversation history:', error);
     return [];
   }
 }
 
-/**
- * Store customer account URL for a conversation
- * @param {string} conversationId - The conversation ID
- * @param {string} url - The customer account URL
- * @returns {Promise<Object>} - The saved URL object
- */
+// Customer Account URL functions
 export async function storeCustomerAccountUrl(conversationId, url) {
   try {
-    return await prisma.customerAccountUrl.upsert({
+    const customerAccountUrl = await db.customerAccountUrl.upsert({
       where: { conversationId },
-      update: {
-        url,
-        updatedAt: new Date()
-      },
-      create: {
-        conversationId,
-        url,
-        updatedAt: new Date()
-      }
+      update: { url, updatedAt: new Date() },
+      create: { conversationId, url }
     });
+    return customerAccountUrl;
   } catch (error) {
     console.error('Error storing customer account URL:', error);
-    throw error;
+    return null;
   }
 }
 
-/**
- * Get customer account URL for a conversation
- * @param {string} conversationId - The conversation ID
- * @returns {Promise<string|null>} - The customer account URL or null if not found
- */
 export async function getCustomerAccountUrl(conversationId) {
   try {
-    const record = await prisma.customerAccountUrl.findUnique({
+    const customerAccountUrl = await db.customerAccountUrl.findUnique({
       where: { conversationId }
     });
-
-    return record?.url || null;
+    return customerAccountUrl?.url || null;
   } catch (error) {
-    console.error('Error retrieving customer account URL:', error);
+    console.error('Error getting customer account URL:', error);
     return null;
   }
 }

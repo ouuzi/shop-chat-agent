@@ -1,6 +1,7 @@
 import { json } from "@remix-run/node";
 import { getCustomerToken } from "../db.server";
 
+
 /**
  * API endpoint for checking if a customer token is available for a given conversation ID
  * The chat interface can poll this endpoint after displaying an auth link
